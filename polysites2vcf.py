@@ -2,8 +2,7 @@
 #Probably only useful to you if you are working on the SGDP 
 #Very specific to this particular format.
 
-from __future__ import division, print_function
-import argparse, sys, pdb
+import argparse, sys
 
 #Remember, in eigenstrat, 2 means "2 ref copies"
 

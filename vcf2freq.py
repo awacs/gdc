@@ -2,10 +2,8 @@
 # N populations and M SNPs - one header row and the first 5 columns are 
 #SNPID, CHR, POS, REF, alter_code1
 
-from __future__ import division, print_function
 from collections import defaultdict
 import argparse, sys
-import pdb
 
 
 ################################################################################

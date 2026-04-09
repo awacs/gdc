@@ -1,16 +1,19 @@
 # Shared functions
-import gzip, pdb
+import gzip
 
 ################################################################################
 
 def open2(file, mode="r"):
-	"""
-	Open a file, or a gzipped file if it ends in .gz
-	"""
-	if file[-3:]==".gz":
-		return gzip.open(file, mode)
-	else:
-		return open(file, mode)
+    """
+    Open a file, or a gzipped file if it ends in .gz.
+    Gzipped files default to text mode ("rt") unless a binary mode is requested.
+    """
+    if file[-3:] == ".gz":
+        if "b" not in mode and "t" not in mode:
+            mode += "t"
+        return gzip.open(file, mode)
+    else:
+        return open(file, mode)
 
 ################################################################################
 
@@ -53,7 +56,7 @@ def output_psmc(haps, chr, pos, options):
     out.write(">chr"+str(chr))
     
     het_pos_iter=enumerate(het_pos)
-    next_het_site,next_het_pos=het_pos_iter.next()
+    next_het_site,next_het_pos=next(het_pos_iter)
     # Start at the first het block. It's not the best thing to do,
     # but it's probably better than starting at 0.
     this_block=first_block=int(pos[0]/100)
@@ -67,7 +70,7 @@ def output_psmc(haps, chr, pos, options):
             out.write("W")
             while next_het_pos <= this_block*100+100:   #Find the next het site after this block
                 try:
-                    next_het_site,next_het_pos=het_pos_iter.next()
+                    next_het_site,next_het_pos=next(het_pos_iter)
                 except StopIteration:
                     out.close()
                     return                

@@ -2,10 +2,8 @@
 # To make psmc output, use the fq2psmcfa program from the utils folder of the psmc directory: 
 # vcf2hetfa.py -v vcf -r ref -s sample -c chrom | fold | fq2psmcfa - > sample.psmcfa
 
-from __future__ import division, print_function
 import sys, getopt, gdc, gzip
 from pyfaidx import Fasta
-import pdb
 
 HETFA_MAP={("A","A"):"A", ("C","C"):"C", ("G", "G"):"G", ("T","T"):"T", ("A", "C"):"M", ("A","G"):"R", ("A","T"):"W", ("C","G"):"S", ("C", "T"):"Y", ("G","T"):"K"}
 
@@ -81,8 +79,8 @@ def output_fastas(options):
     """
     ref_fa=Fasta(options["ref"])
 
-    out0=gzip.open(options["out"]+".0.fa.gz", "w")
-    out1=gzip.open(options["out"]+".1.fa.gz", "w")
+    out0=gzip.open(options["out"]+".0.fa.gz", "wt")
+    out1=gzip.open(options["out"]+".1.fa.gz", "wt")
     out0.write(">"+options["chrom"]+"\n")
     out1.write(">"+options["chrom"]+"\n")
 
@@ -156,7 +154,7 @@ def output_hetfa(options):
                
     out=None
     if options["out"]:    
-        out=gzip.open(options["out"]+".hetfa.fa.gz", "w")
+        out=gzip.open(options["out"]+".hetfa.fa.gz", "wt")
     else: 
         out=sys.stdout
         
