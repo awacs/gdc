@@ -24,6 +24,8 @@ def parse_options():
     parser.add_argument("--aa", action="store_true", help="Polarize by ancestral allele from INFO AA field")
     parser.add_argument("--aa-unknown", choices=["skip", "ref"], default="skip",
                         help="Behaviour when AA is missing/ambiguous: 'skip' drops the site (default), 'ref' treats REF as ancestral")
+    parser.add_argument("--aa-mismatch", choices=["skip", "ref"], default="skip",
+                        help="Behaviour when AA is present but matches neither REF nor ALT: 'skip' drops the site (default), 'ref' treats REF as ancestral")
     return parser.parse_args()
 
 ################################################################################
@@ -174,8 +176,11 @@ def main(options):
             elif aa == alt.upper():
                 flip = True
             else:
-                removed["mismatchAA"] += 1
-                continue
+                if options.aa_mismatch == "skip":
+                    removed["mismatchAA"] += 1
+                    continue
+                # else: treat REF as ancestral, no flip
+                flip = False
 
         # Write .snp (tab-separated): name, chrom, gpos, pos, allele1, allele2
         # allele1 is ancestral (or REF if not polarized); allele2 is derived (or ALT)
