@@ -118,6 +118,8 @@ def main(options):
         removed["unknownAA"] = 0
         removed["mismatchAA"] = 0
     count = 0
+    polarized = 0
+    same = 0
 
     pop_map = {}
     sex_map = {}
@@ -190,11 +192,19 @@ def main(options):
             geno_string += decode_gt(gt_tuple, phased=options.phased, flip=flip)
         geno.write(geno_string + "\n")
         count += 1
+        if options.aa:
+            if flip:
+                polarized += 1
+            else:
+                same += 1
 
     for f in [ind, snp, geno]:
         f.close()
 
     print(f"Done. Wrote {count} sites.")
+    if options.aa:
+        print(f"  Polarized (REF/ALT flipped): {polarized}")
+        print(f"  Kept as-is (REF was ancestral): {same}")
     print(f"Excluded {sum(removed.values())} sites total.")
     for key, val in removed.items():
         if val:
