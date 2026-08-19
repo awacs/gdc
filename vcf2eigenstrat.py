@@ -147,7 +147,7 @@ def main(options):
 
     for rec in vcf:
         chrom = rec.chrom
-        pos = rec.pos + 1  # pysam is 0-based; VCF POS is 1-based
+        pos = rec.pos  # pysam .pos is already 1-based (.start is the 0-based one)
         name = rec.id if rec.id else chrom + ":" + str(pos)
         ref = rec.ref
         alts = rec.alts or ()
