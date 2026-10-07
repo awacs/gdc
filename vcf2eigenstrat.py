@@ -1,5 +1,6 @@
 # Convert a VCF/BCF file to eigenstrat format.
-# Removes multiallelic and indel sites.
+# Removes multiallelic and indel sites, including split multiallelic records.
+# Input must be coordinate-sorted; all records at a multiallelic position are removed.
 # usage: python vcf2eigenstrat.py -v vcf_file.vcf(.gz/.bcf) -o out_root
 # will generate out_root.[snp,ind,geno].
 # -i option is a .ind file to get population names and sex.
@@ -7,13 +8,15 @@
 # --aa polarizes by ancestral allele from the INFO AA field.
 
 import argparse
+from itertools import groupby
 import pysam
 
 ################################################################################
 
 def parse_options():
     parser = argparse.ArgumentParser(
-        description="Convert VCF/BCF to eigenstrat format (ind, snp, geno files)."
+        description="Convert coordinate-sorted VCF/BCF to eigenstrat format (ind, snp, geno files). "
+                    "Exclude multiallelic positions, including alleles on separate records."
     )
     parser.add_argument("-v", "--vcf", required=True, help="Input VCF/BCF file (.gz and .bcf supported)")
     parser.add_argument("-o", "--out", default="out", help="Output root (default: out)")
@@ -106,6 +109,40 @@ def decode_gt(gt_tuple, phased=False, flip=False):
 
 ################################################################################
 
+def biallelic_records(vcf, removed):
+    """Filter whole positions before any indel or ancestral-allele filtering.
+
+    Buffer only one position at a time. Distinct alleles across separate records
+    (e.g. A/C and A/G) make the position multiallelic, even if an ALT has AC=0
+    in the current population. Identical duplicate records are not multiallelic.
+    Counters count excluded input records, not unique genomic positions.
+    """
+    previous_chrom = None
+    previous_pos = None
+    completed_chroms = set()
+    for (chrom, pos), records in groupby(vcf, key=lambda rec: (rec.chrom, rec.pos)):
+        if chrom != previous_chrom:
+            if chrom in completed_chroms:
+                raise ValueError("Input must be coordinate-sorted: repeated contig " + chrom)
+            if previous_chrom is not None:
+                completed_chroms.add(previous_chrom)
+        elif pos < previous_pos:
+            raise ValueError(f"Input must be coordinate-sorted: {chrom}:{pos} follows {previous_pos}")
+        previous_chrom, previous_pos = chrom, pos
+
+        records = list(records)
+        alleles = {
+            allele.upper()
+            for rec in records
+            for allele in (rec.ref,) + (rec.alts or ())
+            if allele != "."
+        }
+        if len(alleles) > 2 or any(len(rec.alts or ()) > 1 for rec in records):
+            removed["multiallelic"] += len(records)
+            continue
+        yield from records
+
+
 def main(options):
     """
     Convert VCF/BCF to eigenstrat format (ind, snp and geno files).
@@ -145,16 +182,12 @@ def main(options):
         for indi in inds:
             ind.write(indi + "\tU\tPOP\n")
 
-    for rec in vcf:
+    for rec in biallelic_records(vcf, removed):
         chrom = rec.chrom
         pos = rec.pos  # pysam .pos is already 1-based (.start is the 0-based one)
         name = rec.id if rec.id else chrom + ":" + str(pos)
         ref = rec.ref
         alts = rec.alts or ()
-
-        if len(alts) > 1:
-            removed["multiallelic"] += 1
-            continue
 
         alt = alts[0] if alts else "."
 
@@ -205,12 +238,13 @@ def main(options):
 
     for f in [ind, snp, geno]:
         f.close()
+    vcf.close()
 
     print(f"Done. Wrote {count} sites.")
     if options.aa:
         print(f"  Polarized (REF/ALT flipped): {polarized}")
         print(f"  Kept as-is (REF was ancestral): {same}")
-    print(f"Excluded {sum(removed.values())} sites total.")
+    print(f"Excluded {sum(removed.values())} records total.")
     for key, val in removed.items():
         if val:
             print(f"  Excluded {val} {key}")
